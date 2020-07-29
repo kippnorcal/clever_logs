@@ -101,7 +101,7 @@ def load_newest_data(sql, df):
     latest_timestamp = time["timestamp"][0]
     df = df[df["timestamp"] > latest_timestamp]
     sql.insert_into("Clever_LoginLogs", df)
-    logging.info(f"Inserted {len(df)} new records into Clever_LoginLogs")
+    logging.info(f"Inserted {len(df)} new records into Clever_LoginLogs.")
 
 
 def close(driver):
@@ -109,21 +109,25 @@ def close(driver):
 
 
 def main():
+    # Download data from Clever
     try:
-        sql = MSSQL()
         driver = create_driver()
         driver.implicitly_wait(5)
         login(driver)
         export_login_logs(driver)
-        df = get_data_from_csv(sql)
-        load_newest_data(sql, df)
-        Mailer("Clever Login Logs").notify()
-    except Exception as e:
-        logging.exception(e)
-        Mailer("Clever Login Logs").notify(error=True)
     finally:
         close(driver)
+    # Transform and load csv data into database table
+    sql = MSSQL()
+    df = get_data_from_csv(sql)
+    load_newest_data(sql, df)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        error_message = None
+    except Exception as e:
+        logging.exception(e)
+        error_message = traceback.format_exc()
+    Mailer("Clever Login Logs").notify(error_message=error_message)
