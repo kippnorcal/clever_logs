@@ -32,13 +32,12 @@ logging.basicConfig(
 
 
 def create_driver():
-    """Create firefox webdriver with the specified preference for automatic downloading."""
+    """Create firefox webdriver with the specified preferences for automatic downloading."""
     profile = webdriver.FirefoxProfile()
     profile.set_preference("browser.download.folderList", 2)
     profile.set_preference("browser.download.manager.showWhenStarting", False)
     profile.set_preference("browser.download.dir", os.getcwd())
     profile.set_preference("browser.helperApps.neverAsk.saveToDisk", "text/csv")
-    profile.set_preference("pdfjs.disabled", True)
     return webdriver.Firefox(firefox_profile=profile)
 
 
@@ -64,7 +63,7 @@ def login(driver):
 
 
 def export_login_logs(driver):
-    """Download Log Logs csv"""
+    """Download Login Logs csv"""
     driver.get("https://schools.clever.com/instant-login/logs")
     time.sleep(5)
     export_button = WebDriverWait(driver, 20).until(
@@ -75,6 +74,7 @@ def export_login_logs(driver):
 
 
 def parse_email(df):
+    """Extract email from attributes column json."""
     attributes = pd.json_normalize(df["attributes"].apply(json.loads))
     df = df.join(attributes.email)
     df.replace(np.nan, "", inplace=True)
@@ -82,6 +82,7 @@ def parse_email(df):
 
 
 def get_data_from_csv(sql):
+    """Get the downloaded csv and store it in a dataframe."""
     result = glob.glob("*.csv")
     file_path = result[0]
     df = pd.read_csv(file_path)
@@ -93,6 +94,7 @@ def get_data_from_csv(sql):
 
 
 def load_newest_data(sql, df):
+    """Insert newest records into the database."""
     time = sql.query(
         "SELECT TOP(1) timestamp FROM custom.Clever_LoginLogs ORDER BY timestamp DESC"
     )
