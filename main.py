@@ -103,7 +103,6 @@ def load_newest_data(sql, df):
     time = sql.query(
         "SELECT TOP(1) timestamp FROM custom.Clever_LoginLogs ORDER BY timestamp DESC"
     )
-    # TODO handle if table doesn't exist yet
     latest_timestamp = time["timestamp"][0]
     df = df[df["timestamp"] > latest_timestamp]
     sql.insert_into("Clever_LoginLogs", df)

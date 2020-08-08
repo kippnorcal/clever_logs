@@ -49,6 +49,8 @@ RECIPIENT_EMAIL=
 
 5. Add settings.yaml file for connecting to Google Drive API
 
+6. Create table in database using definition file in sql folder
+
 ### Build the Docker image
 ```
 docker build -t clever_logs .
