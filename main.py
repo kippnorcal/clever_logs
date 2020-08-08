@@ -31,12 +31,12 @@ logging.basicConfig(
 )
 
 
-def create_driver():
+def create_driver(data_dir):
     """Create firefox webdriver with the specified preferences for automatic downloading."""
     profile = webdriver.FirefoxProfile()
     profile.set_preference("browser.download.folderList", 2)
     profile.set_preference("browser.download.manager.showWhenStarting", False)
-    profile.set_preference("browser.download.dir", os.getcwd())
+    profile.set_preference("browser.download.dir", data_dir)
     profile.set_preference("browser.helperApps.neverAsk.saveToDisk", "text/csv")
     return webdriver.Firefox(firefox_profile=profile)
 
@@ -70,6 +70,7 @@ def export_login_logs(driver):
         EC.presence_of_element_located((By.XPATH, '//a[@aria-label="Export as .csv"]'))
     )
     export_button.click()
+    time.sleep(15)
     logging.info("Successfully downloaded login logs.")
 
 
@@ -81,10 +82,14 @@ def parse_email(df):
     return df
 
 
-def get_data_from_csv(sql):
+def get_data_from_csv(sql, data_dir):
     """Get the downloaded csv and store it in a dataframe."""
-    result = glob.glob("*.csv")
-    file_path = result[0]
+    # the filename sometimes gets cut off due to a Clever bug,
+    # so we're not searching for it by the .csv extension
+    for filename in os.listdir(data_dir):
+        if filename != ".gitkeep":
+            file_path = f"{data_dir}/{filename}"
+            break
     df = pd.read_csv(file_path)
     df = parse_email(df)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
@@ -98,6 +103,7 @@ def load_newest_data(sql, df):
     time = sql.query(
         "SELECT TOP(1) timestamp FROM custom.Clever_LoginLogs ORDER BY timestamp DESC"
     )
+    # TODO handle if table doesn't exist yet
     latest_timestamp = time["timestamp"][0]
     df = df[df["timestamp"] > latest_timestamp]
     sql.insert_into("Clever_LoginLogs", df)
@@ -111,7 +117,8 @@ def close(driver):
 def main():
     # Download data from Clever
     try:
-        driver = create_driver()
+        data_dir = os.path.join(os.getcwd(), "data")
+        driver = create_driver(data_dir)
         driver.implicitly_wait(5)
         login(driver)
         export_login_logs(driver)
@@ -119,7 +126,7 @@ def main():
         close(driver)
     # Transform and load csv data into database table
     sql = MSSQL()
-    df = get_data_from_csv(sql)
+    df = get_data_from_csv(sql, data_dir)
     load_newest_data(sql, df)
 
 
