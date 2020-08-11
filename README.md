@@ -45,11 +45,7 @@ EMAIL_PORT=
 RECIPIENT_EMAIL=
 ```
 
-4. Add credentials.json file from Google Developer console
-
-5. Add settings.yaml file for connecting to Google Drive API
-
-6. Create table in database using definition file in sql folder
+4. Create table in database using definition file in sql folder
 
 ### Build the Docker image
 ```
@@ -58,7 +54,7 @@ docker build -t clever_logs .
 
 ### Running the Job
 ```
-docker run -it clever_logs
+docker run --rm -it clever_logs
 ```
 
 ### Run with volume mapping
