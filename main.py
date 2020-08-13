@@ -188,9 +188,9 @@ def main():
     driver = create_driver(data_dir)
     driver.implicitly_wait(5)
     login(driver)
-    # get_logs(data_dir, driver)
+    get_logs(data_dir, driver)
     get_student_user_table(data_dir, driver)
-    # get_student_google_accounts(data_dir, driver)
+    get_student_google_accounts(data_dir, driver)
 
 
 if __name__ == "__main__":
