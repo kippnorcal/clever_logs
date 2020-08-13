@@ -124,10 +124,9 @@ def close(driver):
     driver.close()
 
 
-def get_logs(data_dir, driver):
+def get_logs(sql, data_dir, driver):
     """Download logs data from Clever"""
     export_login_logs(driver)
-    sql = MSSQL()
     # Transform and load csv data into database table
     df = get_data_from_csv(sql, data_dir)
     load_newest_data(sql, df)
@@ -148,12 +147,12 @@ def export_student_users(driver):
     logging.info("Successfully downloaded student users.")
 
 
-def get_student_user_table(data_dir, driver):
+def get_student_user_table(sql, data_dir, driver):
     """Get student users from Clever Data Browser."""
     export_student_users(driver)
     # Transform and load csv data into database table
     df = get_data_from_csv_by_name(data_dir, "students")
-    MSSQL().insert_into("Clever_StudentUsers", df, if_exists="replace")
+    sql.insert_into("Clever_StudentUsers", df, if_exists="replace")
     logging.info(f"Inserted {len(df)} new records into Clever_StudentUsers.")
 
 
@@ -170,16 +169,17 @@ def export_student_google_accounts(driver):
         EC.presence_of_element_located((By.LINK_TEXT, "Student Export"))
     )
     export_button.click()
+    time.sleep(10)
     logging.info("Successfully downloaded student google accounts.")
 
 
-def get_student_google_accounts(data_dir, driver):
+def get_student_google_accounts(sql, data_dir, driver):
     """Get student emails from Google Accounts Manager app."""
     export_student_google_accounts(driver)
     # Transform and load csv data into database table
     df = get_data_from_csv_by_name(data_dir, "Student_export")
     df.rename(columns={"ID": "SIS_ID"}, inplace=True)
-    MSSQL().insert_into("Clever_StudentGoogleAccounts", df, if_exists="replace")
+    sql.insert_into("Clever_StudentGoogleAccounts", df, if_exists="replace")
     logging.info(f"Inserted {len(df)} new records into Clever_StudentGoogleAccounts.")
 
 
@@ -188,9 +188,10 @@ def main():
     driver = create_driver(data_dir)
     driver.implicitly_wait(5)
     login(driver)
-    get_logs(data_dir, driver)
-    get_student_user_table(data_dir, driver)
-    get_student_google_accounts(data_dir, driver)
+    sql = MSSQL()
+    get_logs(sql, data_dir, driver)
+    get_student_user_table(sql, data_dir, driver)
+    get_student_google_accounts(sql, data_dir, driver)
 
 
 if __name__ == "__main__":
