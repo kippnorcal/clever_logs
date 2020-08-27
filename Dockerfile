@@ -1,15 +1,19 @@
 FROM python:3.7
 WORKDIR /code
 
-# install firefox
-RUN apt-get update
-RUN apt-get install -y firefox-esr
+# install google chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+RUN apt-get -y update
+RUN apt-get install -y google-chrome-stable
 
-# install geckodriver
-RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz 
-RUN tar -xvzf geckodriver*
-RUN chmod +x geckodriver
-RUN mv geckodriver /usr/local/bin/
+# install chromedriver
+RUN apt-get install -yqq unzip
+RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
+RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
+
+# set display port to avoid crash
+ENV DISPLAY=:99
 
 # SQL dependencies
 RUN wget https://packages.microsoft.com/debian/9/prod/pool/main/m/msodbcsql17/msodbcsql17_17.5.2.1-1_amd64.deb
@@ -23,5 +27,4 @@ COPY Pipfile .
 RUN pip install pipenv
 RUN pipenv install --skip-lock
 COPY ./ .
-ENV MOZ_HEADLESS=1
 CMD ["pipenv", "run", "python", "main.py"]

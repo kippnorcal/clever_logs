@@ -32,13 +32,17 @@ logging.basicConfig(
 
 
 def create_driver(data_dir):
-    """Create firefox webdriver with the specified preferences for automatic downloading."""
-    profile = webdriver.FirefoxProfile()
-    profile.set_preference("browser.download.folderList", 2)
-    profile.set_preference("browser.download.manager.showWhenStarting", False)
-    profile.set_preference("browser.download.dir", data_dir)
-    profile.set_preference("browser.helperApps.neverAsk.saveToDisk", "text/csv")
-    return webdriver.Firefox(firefox_profile=profile)
+    """Create Chrome webdriver with the specified preferences for automatic downloading."""
+    options = webdriver.ChromeOptions()
+    options.add_argument("--no-sandbox")  # chrome crashes without this arg
+    options.add_argument("--headless")
+    options.add_argument("--browser.download.folderList=2")
+    options.add_argument("--browser.helperApps.neverAsk.saveToDisk=text/csv")
+    prefs = {"download.default_directory": data_dir}
+    options.add_experimental_option("prefs", prefs)
+    driver = webdriver.Chrome(options=options)
+    driver.implicitly_wait(10)
+    return driver
 
 
 def login(driver):
