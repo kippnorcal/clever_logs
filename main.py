@@ -80,6 +80,7 @@ def export_login_logs(driver):
 
 def parse_email(df):
     """Extract email from attributes column json."""
+    df["attributes"] = df["attributes"].str.replace("\\", " ")
     attributes = pd.json_normalize(df["attributes"].apply(json.loads))
     df = df.join(attributes.email)
     df.replace(np.nan, "", inplace=True)
