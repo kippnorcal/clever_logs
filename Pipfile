@@ -8,6 +8,7 @@ verify_ssl = true
 [packages]
 selenium = "*"
 sqlsorcery = {extras = ["mssql"],version = "*"}
+tenacity = "*"
 
 [requires]
 python_version = "3.7"
