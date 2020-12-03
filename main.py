@@ -73,7 +73,7 @@ def login(driver):
 @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=10))
 def check_for_file_download(file_string):
     """Check if a file is downloaded based on a partial string match"""
-    files = glob.glob(f"{DATA_DIR}/*{file_string}*")
+    files = glob.glob(f"{DATA_DIR}/{file_string}")
     if len(files) == 0:
         raise Exception(f"'{file_string}' file not found.")
 
@@ -86,7 +86,7 @@ def export_login_logs(driver):
         EC.presence_of_element_located((By.XPATH, '//a[@aria-label="Export as .csv"]'))
     )
     export_button.click()
-    check_for_file_download("logins")
+    check_for_file_download("*logins.csv")
     time.sleep(5)
     logging.info("Successfully downloaded login logs.")
 
@@ -161,7 +161,7 @@ def export_student_users(driver):
     time.sleep(15)
     download_button = driver.find_element_by_id("download-all")
     download_button.click()
-    check_for_file_download("students")
+    check_for_file_download("students.csv")
     time.sleep(5)
     logging.info("Successfully downloaded student users.")
 
@@ -188,7 +188,7 @@ def export_student_google_accounts(driver):
         EC.presence_of_element_located((By.LINK_TEXT, "Student Export"))
     )
     export_button.click()
-    check_for_file_download("Student_export")
+    check_for_file_download("Student_export*.csv")
     time.sleep(5)
     logging.info("Successfully downloaded student google accounts.")
 
