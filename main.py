@@ -32,7 +32,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%p %Z",
 )
 
-DATA_DIR = os.path.join(os.getcwd(), "data")
+DATA_DIR = "data"
 
 
 def create_driver():
