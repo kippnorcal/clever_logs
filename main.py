@@ -82,7 +82,7 @@ def export_login_logs(driver):
     """Download Login Logs csv"""
     driver.get("https://schools.clever.com/instant-login/logs")
     time.sleep(5)
-    export_button = WebDriverWait(driver, 20).until(
+    export_button = WebDriverWait(driver, 40).until(
         EC.presence_of_element_located((By.XPATH, '//a[@aria-label="Export as .csv"]'))
     )
     export_button.click()
