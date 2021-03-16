@@ -85,7 +85,6 @@ def export_login_logs(driver):
     )  # this gets us to the Dashboard instead of Portal view
     driver.get("https://schools.clever.com/instant-login/logs")
     time.sleep(5)
-    driver.save_screenshot("export_login_logs1.png")
     export_button = WebDriverWait(driver, 40).until(
         EC.presence_of_element_located(
             (By.XPATH, '//button[@aria-label="Export as .csv"]')
