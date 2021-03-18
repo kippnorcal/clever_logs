@@ -80,15 +80,33 @@ def check_for_file_download(file_string):
 
 def export_login_logs(driver):
     """Download Login Logs csv"""
+    driver.get(
+        "https://schools.clever.com/"
+    )  # this gets us to the Dashboard instead of Portal view
     driver.get("https://schools.clever.com/instant-login/logs")
     time.sleep(5)
     export_button = WebDriverWait(driver, 40).until(
-        EC.presence_of_element_located((By.XPATH, '//a[@aria-label="Export as .csv"]'))
+        EC.presence_of_element_located(
+            (By.XPATH, '//button[@aria-label="Export as .csv"]')
+        )
     )
     export_button.click()
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    yesterday_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, f'//div[@aria-label="day-{yesterday.day}"]')
+        )
+    )
+    yesterday_button.click()
+    download_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, '//a[@aria-label="Download"]'))
+    )
+    download_button.click()
     check_for_file_download("*logins.csv")
     time.sleep(5)
-    logging.info("Successfully downloaded login logs.")
+    logging.info(
+        f"Successfully downloaded login logs for {yesterday.strftime('%m/%d/%Y')}."
+    )
 
 
 def parse_email(df):
