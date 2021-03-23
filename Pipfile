@@ -9,6 +9,7 @@ verify_ssl = true
 selenium = "*"
 sqlsorcery = {extras = ["mssql"],version = "*"}
 tenacity = "*"
+pysftp = "*"
 
 [requires]
 python_version = "3.7"
