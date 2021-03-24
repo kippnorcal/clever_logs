@@ -1,5 +1,6 @@
 # clever_logs
-Selenium script to get Clever login logs 
+Download Clever Student Participation and Resource Usage reports from Clever FTP.
+Also download Google accounts from Clever using Selenium.
 
 
 ## Dependencies:
@@ -14,7 +15,7 @@ Selenium script to get Clever login logs
 1. Clone this repo
 
 ```
-$ git clone https://github.com/kipp-bayarea/clever_logs.git
+$ git clone https://github.com/kippnorcal/clever_logs.git
 ```
 
 2. Install Docker
@@ -37,6 +38,12 @@ DB_PWD=
 CLEVER_USER=
 CLEVER_PW=
 
+# Clever FTP connection
+FTP_HOST=
+FTP_USER=
+FTP_PW=
+FTP_PORT=
+
 # Mailer config
 SENDER_EMAIL=
 SENDER_PWD=
@@ -49,15 +56,15 @@ RECIPIENT_EMAIL=
 
 ### Build the Docker image
 ```
-docker build -t clever_logs .
+docker build -t clever .
 ```
 
 ### Running the Job
 ```
-docker run --rm -it clever_logs
+docker run --rm -it clever
 ```
 
 ### Run with volume mapping
 ```
-docker run --rm -it -v ${PWD}/:/code/ clever_logs
+docker run --rm -it -v ${PWD}/:/code/ clever
 ```
