@@ -34,25 +34,19 @@ class Connector:
         self.ftp = FTP(self.data_dir)
 
     def sync_all_ftp_data(self):
-        for key, value in data_reports.items():
-            table_name = key
-            directory_name = value
-            self._sync_data_from_ftp(table_name, directory_name)
+        for table_name, directory_name in data_reports.items():
+            self.ftp.download_files(directory_name)
+            self._load_new_records_into_table(table_name, directory_name)
 
-    def _sync_data_from_ftp(self, table_name, directory_name):
-        """Download data from the given directory and insert new records into the data warehouse."""
-        self.ftp.download_files(directory_name)
-        latest_date = self._get_latest_date(table_name)
-        one_day = timedelta(days=1)
-        start_date = latest_date + one_day  # earliest date needed
-        yesterday = datetime.today() - one_day
+    def _load_new_records_into_table(self, table_name, report_name):
+        """Find and insert new records into the data warehouse."""
+        start_date = self._get_latest_date(table_name) + timedelta(days=1)
+        yesterday = datetime.today() - timedelta(days=1)
         if start_date > yesterday:
             logging.info(f"Clever_{table_name} is up to date. No records inserted.")
             return
         else:
-            file_names = self._generate_expected_file_names(
-                start_date, yesterday, directory_name
-            )
+            file_names = self._generate_file_names(start_date, yesterday, report_name)
             df = self._read_and_concat_files(file_names)
             self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
             logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
@@ -65,18 +59,19 @@ class Connector:
         latest_date = date["date"][0]
         return datetime.strptime(latest_date, "%Y-%m-%d")
 
-    def _generate_expected_file_names(self, start_date, yesterday, directory_name):
+    def _generate_file_names(self, start_date, yesterday, report_name):
         file_names = []
         while start_date <= yesterday:  # loop through yesterday's date
             formatted_date = start_date.strftime("%Y-%m-%d")
-            file_names.append(f"{formatted_date}-{directory_name}-students.csv")
-            start_date += one_day
+            file_names.append(f"{formatted_date}-{report_name}-students.csv")
+            start_date += timedelta(days=1)
         return file_names
 
     def _read_and_concat_files(self, file_names):
         dfs = []
         for file_name in file_names:
             df = pd.read_csv(f"{self.data_dir}/{file_name}")
+            logging.info(f"Read {len(df)} records from '{file_name}'.")
             dfs.append(df)
         data = pd.concat(dfs)
         return data
@@ -88,7 +83,7 @@ class Connector:
         # Transform and load csv data into database table
         df = self._get_data_from_csv_by_name("Student_export")
         df.rename(columns={"ID": "SIS_ID"}, inplace=True)
-        sql.insert_into("Clever_StudentGoogleAccounts", df, if_exists="replace")
+        self.sql.insert_into("Clever_StudentGoogleAccounts", df, if_exists="replace")
         logging.info(
             f"Inserted {len(df)} new records into Clever_StudentGoogleAccounts."
         )
@@ -107,7 +102,7 @@ class Connector:
 def main():
     connector = Connector()
     connector.sync_all_ftp_data()
-    connector.sync_student_google_accounts(sql, browser)
+    connector.sync_student_google_accounts()
 
 
 if __name__ == "__main__":
