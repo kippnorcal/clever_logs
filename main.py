@@ -8,7 +8,6 @@ import traceback
 import pandas as pd
 from sqlsorcery import MSSQL
 
-from browser import Browser
 from config import data_reports
 from ftp import FTP
 from mailer import Mailer
@@ -40,6 +39,22 @@ class Connector:
 
     def _load_new_records_into_table(self, table_name, report_name):
         """Find and insert new records into the data warehouse."""
+        if report_name == "idm-reports":
+            # this folder contains student emails file, which has no datestamp in the file name
+            self._process_files_without_datestamp(table_name, report_name)
+        else:
+            self._process_files_with_datestamp(table_name, report_name)
+
+    def _process_files_without_datestamp(self, table_name, report_name):
+        # Student Emails file doesn't contain a datestamp in the file name
+        # This table should be truncated and replaced.
+        df = self._read_file(f"{self.data_dir}/google-student-emails.csv")
+        self.sql.insert_into(f"Clever_{table_name}", df, if_exists="replace")
+        logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+
+    def _process_files_with_datestamp(self, table_name, report_name):
+        # Generate names for files with datestamps in the file name and process those files
+        # These tables should be appended to, not truncated.
         start_date = self._get_latest_date(table_name) + timedelta(days=1)
         yesterday = datetime.today() - timedelta(days=1)
         if start_date > yesterday:
@@ -76,33 +91,15 @@ class Connector:
         data = pd.concat(dfs)
         return data
 
-    def sync_student_google_accounts(self):
-        """Get student emails from Google Accounts Manager app."""
-        browser = Browser(self.data_dir)
-        browser.export_student_google_accounts()
-        # Transform and load csv data into database table
-        df = self._get_data_from_csv_by_name("Student_export")
-        df.rename(columns={"ID": "SIS_ID"}, inplace=True)
-        self.sql.insert_into("Clever_StudentGoogleAccounts", df, if_exists="replace")
-        logging.info(
-            f"Inserted {len(df)} new records into Clever_StudentGoogleAccounts."
-        )
-
-    def _get_data_from_csv_by_name(self, string_to_match):
-        """Get the downloaded csv BY NAME and store it in a dataframe."""
-        for filename in os.listdir(self.data_dir):
-            if fnmatch(filename, f"*{string_to_match}*"):
-                file_path = f"{self.data_dir}/{filename}"
-                break
-        df = pd.read_csv(file_path)
-        logging.info(f"Loaded {len(df)} records from downloaded file.")
+    def _read_file(self, file_name):
+        df = pd.read_csv(file_name)
+        logging.info(f"Read {len(df)} records from '{file_name}'.")
         return df
 
 
 def main():
     connector = Connector()
     connector.sync_all_ftp_data()
-    connector.sync_student_google_accounts()
 
 
 if __name__ == "__main__":
