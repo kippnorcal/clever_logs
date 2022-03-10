@@ -1,6 +1,5 @@
 # clever_logs
-Download Clever Student Participation and Resource Usage reports from Clever FTP.
-Also download Google accounts from Clever using Selenium.
+Download Clever Student Participation, Resource Usage, and emails reports from Clever FTP.
 
 
 ## Dependencies:
@@ -68,3 +67,8 @@ docker run --rm -it clever
 ```
 docker run --rm -it -v ${PWD}/:/code/ clever
 ```
+
+## Maintenance
+
+* No annual rollover is required
+* This script can be paused during summer break and restarted when school starts.
