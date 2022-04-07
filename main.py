@@ -55,7 +55,7 @@ class Connector:
     def _process_files_with_datestamp(self, table_name, report_name):
         # Generate names for files with datestamps in the file name and process those files
         # These tables should be appended to, not truncated.
-        start_date = self._get_latest_date(table_name) + timedelta(days=1)
+        start_date = self._get_latest_date(table_name) + timedelta(days=2)
         yesterday = datetime.today() - timedelta(days=1)
         if start_date > yesterday:
             logging.info(f"Clever_{table_name} is up to date. No records inserted.")
