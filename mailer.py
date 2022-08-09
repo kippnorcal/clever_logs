@@ -21,14 +21,18 @@ class Mailer:
         )
 
     def _subject_line(self):
-        subject_type = "Error" if self.error_message else "Success"
+        subject_type = "Sucess" if self.success else "Error"
         return f"{self.jobname} - {subject_type}"
 
     def _body_text(self):
-        if self.error_message:
-            return f"{self.jobname} encountered an error.\n{self.error_message}"
+        if self.success:
+            return f"{self.jobname} completed successfully.\n{self.logs}"
         else:
-            return f"{self.jobname} completed successfully."
+            return f"{self.jobname} encountered an error.\n{self.logs}"
+
+    def _read_logs(self, filename):
+        with open(filename) as f:
+            return f.read()
 
     def _attachments(self, msg):
         filename = "app.log"
@@ -47,8 +51,9 @@ class Mailer:
         self._attachments(msg)
         return msg.as_string()
 
-    def notify(self, error_message=None):
-        self.error_message = error_message
+    def notify(self, success):
+        self.success = success
+        self.logs = self._read_logs("app.log")
         with self.server as s:
             s.login(self.user, self.password)
             msg = self._message()
