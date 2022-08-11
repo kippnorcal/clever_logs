@@ -85,9 +85,12 @@ class Connector:
     def _read_and_concat_files(self, file_names):
         dfs = []
         for file_name in file_names:
-            df = pd.read_csv(f"{self.data_dir}/{file_name}")
-            logging.info(f"Read {len(df)} records from '{file_name}'.")
-            dfs.append(df)
+            try:
+                df = pd.read_csv(f"{self.data_dir}/{file_name}")
+                logging.info(f"Read {len(df)} records from '{file_name}'.")
+                dfs.append(df)
+            except FileNotFoundError as e:
+                logging.info(f"{file_name} Does not exist: \n{e}")
         data = pd.concat(dfs)
         return data
 
