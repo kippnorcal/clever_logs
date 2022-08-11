@@ -74,7 +74,8 @@ class Connector:
         latest_date = date["date"][0]
         return datetime.strptime(latest_date, "%Y-%m-%d")
 
-    def _generate_file_names(self, start_date, yesterday, report_name):
+    @staticmethod
+    def _generate_file_names(start_date, yesterday, report_name):
         file_names = []
         while start_date <= yesterday:  # loop through yesterday's date
             formatted_date = start_date.strftime("%Y-%m-%d")
@@ -94,7 +95,8 @@ class Connector:
         data = pd.concat(dfs)
         return data
 
-    def _read_file(self, file_name):
+    @staticmethod
+    def _read_file(file_name):
         df = pd.read_csv(file_name)
         logging.info(f"Read {len(df)} records from '{file_name}'.")
         return df
