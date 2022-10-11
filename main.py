@@ -63,8 +63,11 @@ class Connector:
         else:
             file_names = self._generate_file_names(start_date, yesterday, report_name)
             df = self._read_and_concat_files(file_names)
-            self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
-            logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+            if df:
+                self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
+                logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+            else:
+                logging.info(f"No records to insert into Clever_{table_name}.")
 
     def _get_latest_date(self, table_name):
         """Get the latest date record in this table."""
@@ -92,8 +95,10 @@ class Connector:
                 dfs.append(df)
             except FileNotFoundError as e:
                 logging.info(f"{file_name} Does not exist: \n{e}")
-        data = pd.concat(dfs)
-        return data
+        if dfs:
+            return pd.concat(dfs)
+        else:
+            return None
 
     @staticmethod
     def _read_file(file_name):

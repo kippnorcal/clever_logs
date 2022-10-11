@@ -130,3 +130,5 @@ dmypy.json
 
 # project specific
 *.csv
+.DS_Store
+.idea
