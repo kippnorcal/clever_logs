@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-from fnmatch import fnmatch
 import logging
-import os
 import sys
 import traceback
 
