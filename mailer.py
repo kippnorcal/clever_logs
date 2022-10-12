@@ -1,10 +1,7 @@
 import os
-import email
 import smtplib
 import ssl
 
-from email import encoders
-from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -12,6 +9,7 @@ from email.mime.text import MIMEText
 class Mailer:
     def __init__(self, jobname):
         self.jobname = jobname
+        self.error_message = None
         self.user = os.getenv("SENDER_EMAIL")
         self.password = os.getenv("SENDER_PWD")
         self.to_email = os.getenv("RECIPIENT_EMAIL")

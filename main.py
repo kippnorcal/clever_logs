@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-from fnmatch import fnmatch
 import logging
-import os
 import sys
 import traceback
 
@@ -63,8 +61,11 @@ class Connector:
         else:
             file_names = self._generate_file_names(start_date, yesterday, report_name)
             df = self._read_and_concat_files(file_names)
-            self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
-            logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+            if df:
+                self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
+                logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+            else:
+                logging.info(f"No records to insert into Clever_{table_name}.")
 
     def _get_latest_date(self, table_name):
         """Get the latest date record in this table."""
@@ -74,7 +75,8 @@ class Connector:
         latest_date = date["date"][0]
         return datetime.strptime(latest_date, "%Y-%m-%d")
 
-    def _generate_file_names(self, start_date, yesterday, report_name):
+    @staticmethod
+    def _generate_file_names(start_date, yesterday, report_name):
         file_names = []
         while start_date <= yesterday:  # loop through yesterday's date
             formatted_date = start_date.strftime("%Y-%m-%d")
@@ -85,13 +87,19 @@ class Connector:
     def _read_and_concat_files(self, file_names):
         dfs = []
         for file_name in file_names:
-            df = pd.read_csv(f"{self.data_dir}/{file_name}")
-            logging.info(f"Read {len(df)} records from '{file_name}'.")
-            dfs.append(df)
-        data = pd.concat(dfs)
-        return data
+            try:
+                df = pd.read_csv(f"{self.data_dir}/{file_name}")
+                logging.info(f"Read {len(df)} records from '{file_name}'.")
+                dfs.append(df)
+            except FileNotFoundError as e:
+                logging.info(f"{file_name} Does not exist: \n{e}")
+        if dfs:
+            return pd.concat(dfs)
+        else:
+            return None
 
-    def _read_file(self, file_name):
+    @staticmethod
+    def _read_file(file_name):
         df = pd.read_csv(file_name)
         logging.info(f"Read {len(df)} records from '{file_name}'.")
         return df
