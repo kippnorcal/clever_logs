@@ -75,21 +75,6 @@ def _generate_file_names(start_date: datetime, yesterday: datetime, report_name:
     return file_names
 
 
-def _read_and_concat_files(file_names: str) -> Union[pd.DataFrame, None]:
-    dfs = []
-    for file_name in file_names:
-        try:
-            file_name = f"data/{file_name}"
-            df = _read_file(file_name)
-            dfs.append(df)
-        except FileNotFoundError as e:
-            logging.info(f"{file_name} Does not exist: \n{e}")
-    if dfs:
-        return pd.concat(dfs)
-    else:
-        return None
-
-
 def _read_file(file_name: str) -> pd.DataFrame:
     df = pd.read_csv(file_name)
     logging.info(f"Read {len(df)} records from '{file_name}'.")
