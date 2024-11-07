@@ -8,6 +8,7 @@ from typing import List, Union
 from gbq_connector import BigQueryClient, CloudStorageClient
 from job_notifications import create_notifications
 import pandas as pd
+import pysftp
 
 from ftp import FTP
 
@@ -87,10 +88,15 @@ def _read_file(file_name: str) -> pd.DataFrame:
 def main():
     cloud_client = CloudStorageClient()
     bq_conn = BigQueryClient()
-    ftp = FTP("data")
+    ftp = pysftp.Connection(
+            host=os.getenv("FTP_HOST"),
+            username=os.getenv("FTP_USER"),
+            password=os.getenv("FTP_PW"),
+            cnopts=pysftp.CnOpts(),
+        )
 
     for table_name, directory_name in DATA_REPORTS.items():
-        ftp.download_files(directory_name)
+        ftp.get_d(directory_name, LOCAL_DIR, preserve_mtime=True)
         if directory_name == "idm-reports":
             file_name = f"{table_name}.csv"
             file_path = os.path.join(LOCAL_DIR, file_name)
