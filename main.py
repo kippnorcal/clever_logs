@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 import sys
 import traceback
+from typing import List, Union
 
 import pandas as pd
 from sqlsorcery import MSSQL
@@ -33,14 +34,14 @@ DATA_REPORTS = {
 }
 
 
-def _process_files_without_datestamp(table_name, sql):
+def _process_files_without_datestamp(table_name: str, sql: MSSQL) -> None:
     # Student Emails file doesn't contain a datestamp in the file name
     # This table should be truncated and replaced.
     df = _read_file(f"data/google-student-emails.csv")
     sql.insert_into(f"Clever_{table_name}", df, if_exists="replace")
     logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
 
-def _process_files_with_datestamp(table_name, report_name, sql):
+def _process_files_with_datestamp(table_name: str, report_name: str, sql: MSSQL) -> None:
     # Generate names for files with datestamps in the file name and process those files
     # These tables should be appended to, not truncated.
     start_date = _get_latest_date(table_name) + timedelta(days=1)
@@ -57,7 +58,7 @@ def _process_files_with_datestamp(table_name, report_name, sql):
         else:
             logging.info(f"No records to insert into Clever_{table_name}.")
 
-def _get_latest_date(table_name, sql):
+def _get_latest_date(table_name: str, sql: MSSQL) -> datetime:
     """Get the latest date record in this table."""
     date = sql.query(
         f"SELECT TOP(1) [date] FROM custom.Clever_{table_name} ORDER BY [date] DESC"
@@ -66,7 +67,7 @@ def _get_latest_date(table_name, sql):
     return datetime.strptime(latest_date, "%Y-%m-%d")
 
 
-def _generate_file_names(start_date, yesterday, report_name):
+def _generate_file_names(start_date: datetime, yesterday: datetime, report_name: str) -> List[str]:
     file_names = []
     while start_date <= yesterday:  # loop through yesterday's date
         formatted_date = start_date.strftime("%Y-%m-%d")
@@ -75,7 +76,7 @@ def _generate_file_names(start_date, yesterday, report_name):
     return file_names
 
 
-def _read_and_concat_files(file_names):
+def _read_and_concat_files(file_names: str) -> Union[pd.DataFrame, None]:
     dfs = []
     for file_name in file_names:
         try:
@@ -90,7 +91,7 @@ def _read_and_concat_files(file_names):
         return None
 
 
-def _read_file(file_name):
+def _read_file(file_name: str) -> pd.DataFrame:
     df = pd.read_csv(file_name)
     logging.info(f"Read {len(df)} records from '{file_name}'.")
     return df
@@ -104,11 +105,6 @@ def main():
             _process_files_without_datestamp(table_name)
         else:
             _process_files_with_datestamp(table_name, directory_name)
-
-
-
-    connector = Connector()
-    connector.sync_all_ftp_data()
 
 
 if __name__ == "__main__":
