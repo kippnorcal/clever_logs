@@ -10,8 +10,6 @@ from job_notifications import create_notifications
 import pandas as pd
 import pysftp
 
-from ftp import FTP
-
 
 logging.basicConfig(
     handlers=[
