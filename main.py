@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
 import logging
+import os
 import sys
 import traceback
 from typing import List, Union
 
+from gbq_connector import BigQueryClient, CloudStorageClient
 from job_notifications import create_notifications
 import pandas as pd
 
@@ -27,37 +29,38 @@ we ever need to use it again.
 """
 
 DATA_REPORTS = {
-    # "Participation": "daily-participation",
-    # "Resource_Usage": "resource-usage",
-    "StudentGoogleAccounts": "idm-reports"
+    # "participation": "daily-participation",
+    # "resource_usage": "resource-usage",
+    "student_google_accounts": "idm-reports"
 }
+LOCAL_DIR = "data"
+BUCKET = os.getenv("BUCKET")
 
 
-def _process_files_without_datestamp(table_name: str, sql: MSSQL) -> None:
-    # Student Emails file doesn't contain a datestamp in the file name
-    # This table should be truncated and replaced.
-    df = _read_file(f"data/google-student-emails.csv")
-    sql.insert_into(f"Clever_{table_name}", df, if_exists="replace")
-    logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+def _upload_file(table_name: str, file_name, data: pd.DataFrame, cloud_client: CloudStorageClient) -> None:
+    blob = f"clever/{table_name}/{file_name}"
+    cloud_client.load_dataframe_to_cloud_as_csv(BUCKET, blob, data)
+    logging.info(f"Inserted {len(data)} records into {table_name}.")
 
-def _process_files_with_datestamp(table_name: str, report_name: str, sql: MSSQL) -> None:
+
+def _process_files_with_datestamp(table_name: str, report_name: str, start_date: datetime, cloud_client: CloudStorageClient) -> None:
     # Generate names for files with datestamps in the file name and process those files
     # These tables should be appended to, not truncated.
-    start_date = _get_latest_date(table_name) + timedelta(days=1)
     yesterday = datetime.today() - timedelta(days=1)
     if start_date > yesterday:
-        logging.info(f"Clever_{table_name} is up to date. No records inserted.")
-        return
+        logging.info(f"clever_{table_name} is up to date. No records inserted.")
     else:
         file_names = _generate_file_names(start_date, yesterday, report_name)
-        df = _read_and_concat_files(file_names)
         if df:
-            sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
-            logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
+            for file_name in file_names:
+                file_path = os.path.join(LOCAL_DIR, file_name)
+                df = _read_file(file_path)
+                _upload_file(table_name, file_name, df, cloud_client)
         else:
             logging.info(f"No records to insert into Clever_{table_name}.")
 
-def _get_latest_date(table_name: str, sql: MSSQL) -> datetime:
+
+def _get_latest_date(table_name: str, sql: BigQueryClient) -> datetime:
     """Get the latest date record in this table."""
     date = sql.query(
         f"SELECT TOP(1) [date] FROM custom.Clever_{table_name} ORDER BY [date] DESC"
@@ -82,13 +85,20 @@ def _read_file(file_name: str) -> pd.DataFrame:
 
 
 def main():
+    cloud_client = CloudStorageClient()
+    bq_conn = BigQueryClient()
     ftp = FTP("data")
+
     for table_name, directory_name in DATA_REPORTS.items():
         ftp.download_files(directory_name)
         if directory_name == "idm-reports":
-            _process_files_without_datestamp(table_name)
+            file_name = f"{table_name}.csv"
+            file_path = os.path.join(LOCAL_DIR, file_name)
+            df = _read_file(file_path)
+            _upload_file(table_name, file_name, df, cloud_client)
         else:
-            _process_files_with_datestamp(table_name, directory_name)
+            start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
+            _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
 
 
 if __name__ == "__main__":
