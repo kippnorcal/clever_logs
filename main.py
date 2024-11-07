@@ -61,13 +61,11 @@ def _process_files_with_datestamp(table_name: str, report_name: str, start_date:
             logging.info(f"No records to insert into Clever_{table_name}.")
 
 
-def _get_latest_date(table_name: str, sql: BigQueryClient) -> datetime:
+def _get_latest_date(table_name: str, bq_conn: BigQueryClient) -> datetime:
     """Get the latest date record in this table."""
-    date = sql.query(
-        f"SELECT TOP(1) [date] FROM custom.Clever_{table_name} ORDER BY [date] DESC"
-    )
-    latest_date = date["date"][0]
-    return datetime.strptime(latest_date, "%Y-%m-%d")
+    result = bq_conn.query(f"SELECT MAX(date) FROM `base_clever_{table_name}`")
+    times_stamp = result.iloc[0, 0].strftime('%Y-%m-%d')
+    return datetime.strptime(times_stamp, "%Y-%m-%d")
 
 
 def _generate_file_names(start_date: datetime, yesterday: datetime, report_name: str) -> List[str]:
