@@ -6,8 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-sqlsorcery = {extras = ["mssql"],version = "*"}
 pysftp = "*"
+job-notifications = "*"
+gbq-connector = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.12"
