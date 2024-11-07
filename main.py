@@ -117,6 +117,16 @@ class Connector:
 
 
 def main():
+    ftp = FTP("data")
+    for table_name, directory_name in DATA_REPORTS.items():
+        ftp.download_files(directory_name)
+        if directory_name == "idm-reports":
+            _process_files_without_datestamp(table_name)
+        else:
+            _process_files_with_datestamp(table_name, directory_name)
+
+
+
     connector = Connector()
     connector.sync_all_ftp_data()
 
