@@ -1,11 +1,13 @@
 # clever_logs
 Download Clever Student Participation, Resource Usage, and emails reports from Clever FTP.
 
+At this time, student emails is the only report being downloaded from Clever. To start pulling in Student Participation and Resource Usage reports, uncomment the lines in DATA_REPORTS in main.py and setup tables in Big Query with the following naming convention `base_clever_[name_of_report]`
 
 ## Dependencies:
 
-* Python3.7
+* Python3
 * [Pipenv](https://pipenv.readthedocs.io/en/latest/)
+* [Docker](https://docs.docker.com/docker-for-mac/install/)
 
 ## Getting Started
 
@@ -25,14 +27,6 @@ $ git clone https://github.com/kippnorcal/clever_logs.git
 3. Create .env file with project secrets
 
 ```
-# Database variables
-DB_TYPE=
-DB_SERVER=
-DB=
-DB_SCHEMA=
-DB_USER=
-DB_PWD=
-
 # Clever variables
 CLEVER_USER=
 CLEVER_PW=
@@ -43,12 +37,17 @@ FTP_USER=
 FTP_PW=
 FTP_PORT=
 
-# Mailer config
-SENDER_EMAIL=
-SENDER_PWD=
-EMAIL_SERVER=
-EMAIL_PORT=
-RECIPIENT_EMAIL=
+# Mailgun & email notification variables
+MG_DOMAIN=
+MG_API_URL=
+MG_API_KEY=
+FROM_ADDRESS=
+TO_ADDRESS=
+
+# Google Cloud Credentials
+GOOGLE_APPLICATION_CREDENTIALS=
+GBQ_PROJECT=
+BUCKET=
 ```
 
 4. Create table in database using definition file in sql folder

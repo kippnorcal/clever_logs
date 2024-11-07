@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 import logging
+import os
 import sys
 import traceback
+from typing import List, Union
 
+from gbq_connector import BigQueryClient, CloudStorageClient
+from job_notifications import create_notifications
 import pandas as pd
-from sqlsorcery import MSSQL
-
-from config import data_reports
-from ftp import FTP
-from mailer import Mailer
+import pysftp
 
 
 logging.basicConfig(
@@ -21,101 +21,99 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%p %Z",
 )
 
+"""
+Commented out "Participation" and "Resource_Usage" as we currently do not need this data.
+These reports use the Connector._process_files_with_datestamp method. Keeping this code just in case 
+we ever need to use it again.
+"""
 
-class Connector:
-    """ETL connector class"""
+DATA_REPORTS = {
+    # "participation": "daily-participation",
+    # "resource_usage": "resource-usage",
+    "google-student-emails": "idm-reports"
+}
+LOCAL_DIR = "data"
+BUCKET = os.getenv("BUCKET")
 
-    def __init__(self):
-        self.data_dir = "data"
-        self.sql = MSSQL()
-        self.ftp = FTP(self.data_dir)
 
-    def sync_all_ftp_data(self):
-        for table_name, directory_name in data_reports.items():
-            self.ftp.download_files(directory_name)
-            self._load_new_records_into_table(table_name, directory_name)
+def _upload_file(table_name: str, file_name, data: pd.DataFrame, cloud_client: CloudStorageClient) -> None:
+    blob = f"clever/{table_name}/{file_name}"
+    cloud_client.load_dataframe_to_cloud_as_csv(BUCKET, blob, data)
+    logging.info(f"Inserted {len(data)} records into {table_name}.")
 
-    def _load_new_records_into_table(self, table_name, report_name):
-        """Find and insert new records into the data warehouse."""
-        if report_name == "idm-reports":
-            # this folder contains student emails file, which has no datestamp in the file name
-            self._process_files_without_datestamp(table_name, report_name)
+
+def _process_files_with_datestamp(table_name: str, report_name: str, start_date: datetime, cloud_client: CloudStorageClient) -> None:
+    # Generate names for files with datestamps in the file name and process those files
+    # These tables should be appended to, not truncated.
+    yesterday = datetime.today() - timedelta(days=1)
+    if start_date > yesterday:
+        logging.info(f"base_clever_{table_name} is up to date. No records inserted.")
+    else:
+        file_names = _generate_file_names(start_date, yesterday, report_name)
+        if df:
+            for file_name in file_names:
+                try:
+                    file_path = os.path.join(LOCAL_DIR, file_name)
+                    df = _read_file(file_path)
+                    _upload_file(table_name, file_name, df, cloud_client)
+                except FileNotFoundError as e:
+                    logging.info(f"Error {file_path}: {e}")        
         else:
-            self._process_files_with_datestamp(table_name, report_name)
+            logging.info(f"No records to insert into Clever_{table_name}.")
 
-    def _process_files_without_datestamp(self, table_name, report_name):
-        # Student Emails file doesn't contain a datestamp in the file name
-        # This table should be truncated and replaced.
-        df = self._read_file(f"{self.data_dir}/google-student-emails.csv")
-        self.sql.insert_into(f"Clever_{table_name}", df, if_exists="replace")
-        logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
 
-    def _process_files_with_datestamp(self, table_name, report_name):
-        # Generate names for files with datestamps in the file name and process those files
-        # These tables should be appended to, not truncated.
-        start_date = self._get_latest_date(table_name) + timedelta(days=1)
-        yesterday = datetime.today() - timedelta(days=1)
-        if start_date > yesterday:
-            logging.info(f"Clever_{table_name} is up to date. No records inserted.")
-            return
-        else:
-            file_names = self._generate_file_names(start_date, yesterday, report_name)
-            df = self._read_and_concat_files(file_names)
-            if df:
-                self.sql.insert_into(f"Clever_{table_name}", df, if_exists="append")
-                logging.info(f"Inserted {len(df)} records into Clever_{table_name}.")
-            else:
-                logging.info(f"No records to insert into Clever_{table_name}.")
+def _get_latest_date(table_name: str, bq_conn: BigQueryClient) -> datetime:
+    """Get the latest date record in this table."""
+    result = bq_conn.query(f"SELECT MAX(date) FROM `base_clever_{table_name}`")
+    times_stamp = result.iloc[0, 0].strftime('%Y-%m-%d')
+    return datetime.strptime(times_stamp, "%Y-%m-%d")
 
-    def _get_latest_date(self, table_name):
-        """Get the latest date record in this table."""
-        date = self.sql.query(
-            f"SELECT TOP(1) [date] FROM custom.Clever_{table_name} ORDER BY [date] DESC"
-        )
-        latest_date = date["date"][0]
-        return datetime.strptime(latest_date, "%Y-%m-%d")
 
-    @staticmethod
-    def _generate_file_names(start_date, yesterday, report_name):
-        file_names = []
-        while start_date <= yesterday:  # loop through yesterday's date
-            formatted_date = start_date.strftime("%Y-%m-%d")
-            file_names.append(f"{formatted_date}-{report_name}-students.csv")
-            start_date += timedelta(days=1)
-        return file_names
+def _generate_file_names(start_date: datetime, yesterday: datetime, report_name: str) -> List[str]:
+    file_names = []
+    while start_date <= yesterday:  # loop through yesterday's date
+        formatted_date = start_date.strftime("%Y-%m-%d")
+        file_names.append(f"{formatted_date}-{report_name}-students.csv")
+        start_date += timedelta(days=1)
+    return file_names
 
-    def _read_and_concat_files(self, file_names):
-        dfs = []
-        for file_name in file_names:
-            try:
-                df = pd.read_csv(f"{self.data_dir}/{file_name}")
-                logging.info(f"Read {len(df)} records from '{file_name}'.")
-                dfs.append(df)
-            except FileNotFoundError as e:
-                logging.info(f"{file_name} Does not exist: \n{e}")
-        if dfs:
-            return pd.concat(dfs)
-        else:
-            return None
 
-    @staticmethod
-    def _read_file(file_name):
-        df = pd.read_csv(file_name)
-        logging.info(f"Read {len(df)} records from '{file_name}'.")
-        return df
+def _read_file(file_name: str) -> pd.DataFrame:
+    df = pd.read_csv(file_name)
+    logging.info(f"Read {len(df)} records from '{file_name}'.")
+    return df
 
 
 def main():
-    connector = Connector()
-    connector.sync_all_ftp_data()
+    cloud_client = CloudStorageClient()
+    bq_conn = BigQueryClient()
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+    ftp = pysftp.Connection(
+            host=os.getenv("FTP_HOST"),
+            username=os.getenv("FTP_USER"),
+            password=os.getenv("FTP_PW"),
+            cnopts=cnopts
+        )
+
+    for table_name, directory_name in DATA_REPORTS.items():
+        ftp.get_d(directory_name, LOCAL_DIR, preserve_mtime=True)
+        if directory_name == "idm-reports":
+            file_name = f"{table_name}.csv"
+            file_path = os.path.join(LOCAL_DIR, file_name)
+            df = _read_file(file_path)
+            _upload_file(table_name, file_name, df, cloud_client)
+        else:
+            start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
+            _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
 
 
 if __name__ == "__main__":
+    notifications = create_notifications("BQ Dev: Clever", "mailgun", logs="app.log")
     try:
         main()
-        success = True
+        notifications.notify()
     except Exception as e:
-        logging.exception(e)
-        logging.info(traceback.format_exc())
-        success = False
-    Mailer("Clever").notify(success)
+        stack_trace = traceback.format_exc()
+        notifications.notify(error_message=stack_trace)
