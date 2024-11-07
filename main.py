@@ -47,14 +47,17 @@ def _process_files_with_datestamp(table_name: str, report_name: str, start_date:
     # These tables should be appended to, not truncated.
     yesterday = datetime.today() - timedelta(days=1)
     if start_date > yesterday:
-        logging.info(f"clever_{table_name} is up to date. No records inserted.")
+        logging.info(f"base_clever_{table_name} is up to date. No records inserted.")
     else:
         file_names = _generate_file_names(start_date, yesterday, report_name)
         if df:
             for file_name in file_names:
-                file_path = os.path.join(LOCAL_DIR, file_name)
-                df = _read_file(file_path)
-                _upload_file(table_name, file_name, df, cloud_client)
+                try:
+                    file_path = os.path.join(LOCAL_DIR, file_name)
+                    df = _read_file(file_path)
+                    _upload_file(table_name, file_name, df, cloud_client)
+                except FileNotFoundError as e:
+                    logging.info(f"Error {file_path}: {e}")        
         else:
             logging.info(f"No records to insert into Clever_{table_name}.")
 
