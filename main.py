@@ -30,7 +30,7 @@ we ever need to use it again.
 DATA_REPORTS = {
     # "participation": "daily-participation",
     # "resource_usage": "resource-usage",
-    "student_google_accounts": "idm-reports"
+    "google-student-emails": "idm-reports"
 }
 LOCAL_DIR = "data"
 BUCKET = os.getenv("BUCKET")
@@ -84,11 +84,14 @@ def _read_file(file_name: str) -> pd.DataFrame:
 def main():
     cloud_client = CloudStorageClient()
     bq_conn = BigQueryClient()
+
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
     ftp = pysftp.Connection(
             host=os.getenv("FTP_HOST"),
             username=os.getenv("FTP_USER"),
             password=os.getenv("FTP_PW"),
-            cnopts=pysftp.CnOpts(),
+            cnopts=cnopts
         )
 
     for table_name, directory_name in DATA_REPORTS.items():
@@ -104,9 +107,9 @@ def main():
 
 
 if __name__ == "__main__":
-    notifications = create_notifications("Clever", "mailgun", logs="app.log")
+    notifications = create_notifications("BQ Dev: Clever", "mailgun", logs="app.log")
     try:
-        main(notifications)
+        main()
         notifications.notify()
     except Exception as e:
         stack_trace = traceback.format_exc()
