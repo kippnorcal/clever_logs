@@ -4,11 +4,10 @@ import sys
 import traceback
 from typing import List, Union
 
+from job_notifications import create_notifications
 import pandas as pd
-from sqlsorcery import MSSQL
 
 from ftp import FTP
-from mailer import Mailer
 
 
 logging.basicConfig(
@@ -108,11 +107,10 @@ def main():
 
 
 if __name__ == "__main__":
+    notifications = create_notifications("Clever", "mailgun", logs="app.log")
     try:
-        main()
-        success = True
+        main(notifications)
+        notifications.notify()
     except Exception as e:
-        logging.exception(e)
-        logging.info(traceback.format_exc())
-        success = False
-    Mailer("Clever").notify(success)
+        stack_trace = traceback.format_exc()
+        notifications.notify(error_message=stack_trace)
