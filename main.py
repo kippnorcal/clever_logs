@@ -6,7 +6,6 @@ import traceback
 import pandas as pd
 from sqlsorcery import MSSQL
 
-from config import data_reports
 from ftp import FTP
 from mailer import Mailer
 
@@ -21,6 +20,18 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%p %Z",
 )
 
+"""
+Commented out "Participation" and "Resource_Usage" as we currently do not need this data.
+These reports use the Connector._process_files_with_datestamp method. Keeping this code just in case 
+we ever need to use it again.
+"""
+
+DATA_REPORTS = {
+    # "Participation": "daily-participation",
+    # "Resource_Usage": "resource-usage",
+    "StudentGoogleAccounts": "idm-reports"
+}
+
 
 class Connector:
     """ETL connector class"""
@@ -31,7 +42,7 @@ class Connector:
         self.ftp = FTP(self.data_dir)
 
     def sync_all_ftp_data(self):
-        for table_name, directory_name in data_reports.items():
+        for table_name, directory_name in DATA_REPORTS.items():
             self.ftp.download_files(directory_name)
             self._load_new_records_into_table(table_name, directory_name)
 
