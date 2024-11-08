@@ -79,7 +79,7 @@ def _generate_file_names(start_date: datetime, yesterday: datetime, report_name:
 
 
 def _read_file(file_name: str) -> pd.DataFrame:
-    df = pd.read_csv(file_name)
+    df = pd.read_csv(file_name, dtype='string')
     logging.info(f"Read {len(df)} records from '{file_name}'.")
     return df
 
