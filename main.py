@@ -5,7 +5,7 @@ import sys
 import traceback
 from typing import List, Union
 
-from gbq_connector import BigQueryClient, CloudStorageClient
+from gbq_connector import BigQueryClient, CloudStorageClient, DbtClient
 from job_notifications import create_notifications
 import pandas as pd
 import pysftp
@@ -87,6 +87,7 @@ def _read_file(file_name: str) -> pd.DataFrame:
 def main():
     cloud_client = CloudStorageClient()
     bq_conn = BigQueryClient()
+    dbt_client = DbtClient()
 
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
@@ -107,6 +108,8 @@ def main():
         else:
             start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
             _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
+
+    dbt_client.run_job()
 
 
 if __name__ == "__main__":
