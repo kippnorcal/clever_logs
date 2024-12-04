@@ -48,6 +48,12 @@ TO_ADDRESS=
 GOOGLE_APPLICATION_CREDENTIALS=
 GBQ_PROJECT=
 BUCKET=
+
+# dbt variables
+DBT_ACCOUNT_ID=
+DBT_JOB_ID=
+DBT_BASE_URL=
+DBT_PERSONAL_ACCESS_TOKEN=
 ```
 
 4. Create table in database using definition file in sql folder
