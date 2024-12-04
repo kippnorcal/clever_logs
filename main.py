@@ -109,6 +109,7 @@ def main():
             start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
             _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
 
+    logging.info("Running dbt job")
     dbt_client.run_job()
 
 
