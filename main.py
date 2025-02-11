@@ -35,6 +35,7 @@ DATA_REPORTS = {
 LOCAL_DIR = "data"
 BUCKET = os.getenv("BUCKET")
 
+notifications = create_notifications("Clever", "mailgun", logs="app.log")
 
 def _upload_file(table_name: str, file_name, data: pd.DataFrame, cloud_client: CloudStorageClient) -> None:
     blob = f"clever/{table_name}/{file_name}"
@@ -114,7 +115,6 @@ def main():
 
 
 if __name__ == "__main__":
-    notifications = create_notifications("BQ Dev: Clever", "mailgun", logs="app.log")
     try:
         main()
         notifications.notify()
