@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime, timedelta
 import logging
 import os
@@ -20,6 +21,15 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %I:%M:%S%p %Z",
 )
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--dbt-refresh",
+    help="Runs dbt refresh job",
+    dest="dbt_refresh",
+    action="store_true"
+)
+args = parser.parse_args()
 
 """
 Commented out "Participation" and "Resource_Usage" as we currently do not need this data.
@@ -110,8 +120,9 @@ def main():
             start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
             _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
 
-    logging.info("Running dbt job")
-    dbt_client.run_job()
+    if args.dbt_refresh:
+        logging.info("Running dbt refresh job")
+        dbt_client.run_job()
 
 
 if __name__ == "__main__":
