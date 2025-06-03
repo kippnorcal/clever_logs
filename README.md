@@ -65,12 +65,16 @@ docker build -t clever .
 
 ### Running the Job
 ```
-docker run --rm -it clever
+docker run --rm clever
 ```
 
 ### Run with volume mapping
 ```
-docker run --rm -it -v ${PWD}/:/code/ clever
+docker run --rm -v ${PWD}/:/code/ clever
+```
+### Refreshing dbt models
+```
+docker run --rm clever --dbt-refresh
 ```
 
 ## Maintenance
