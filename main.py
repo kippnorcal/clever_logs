@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime, timedelta
 import logging
 import os
+import stat
 import sys
 import traceback
 from typing import List, Union
@@ -9,7 +10,7 @@ from typing import List, Union
 from gbq_connector import BigQueryClient, CloudStorageClient, DbtClient
 from job_notifications import create_notifications
 import pandas as pd
-import pysftp
+import paramiko
 
 
 logging.basicConfig(
@@ -89,6 +90,16 @@ def _generate_file_names(start_date: datetime, yesterday: datetime, report_name:
     return file_names
 
 
+def _download_dir(sftp: paramiko.SFTPClient, remote_dir: str, local_dir: str) -> None:
+    # Copy regular files (non-recursive) from remote_dir, preserving modification times
+    os.makedirs(local_dir, exist_ok=True)
+    for attr in sftp.listdir_attr(remote_dir):
+        if stat.S_ISREG(attr.st_mode):
+            local_path = os.path.join(local_dir, attr.filename)
+            sftp.get(f"{remote_dir}/{attr.filename}", local_path)
+            os.utime(local_path, (attr.st_atime, attr.st_mtime))
+
+
 def _read_file(file_name: str) -> pd.DataFrame:
     df = pd.read_csv(file_name, dtype='string')
     logging.info(f"Read {len(df)} records from '{file_name}'.")
@@ -100,25 +111,25 @@ def main():
     bq_conn = BigQueryClient()
     dbt_client = DbtClient()
 
-    cnopts = pysftp.CnOpts()
-    cnopts.hostkeys = None
-    ftp = pysftp.Connection(
-            host=os.getenv("FTP_HOST"),
+    with paramiko.SSHClient() as ssh:
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(
+            hostname=os.getenv("FTP_HOST"),
+            port=int(os.getenv("FTP_PORT") or 22),
             username=os.getenv("FTP_USER"),
             password=os.getenv("FTP_PW"),
-            cnopts=cnopts
         )
-
-    for table_name, directory_name in DATA_REPORTS.items():
-        ftp.get_d(directory_name, LOCAL_DIR, preserve_mtime=True)
-        if directory_name == "idm-reports":
-            file_name = f"{table_name}.csv"
-            file_path = os.path.join(LOCAL_DIR, file_name)
-            df = _read_file(file_path)
-            _upload_file(table_name, file_name, df, cloud_client)
-        else:
-            start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
-            _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
+        with ssh.open_sftp() as sftp:
+            for table_name, directory_name in DATA_REPORTS.items():
+                _download_dir(sftp, directory_name, LOCAL_DIR)
+                if directory_name == "idm-reports":
+                    file_name = f"{table_name}.csv"
+                    file_path = os.path.join(LOCAL_DIR, file_name)
+                    df = _read_file(file_path)
+                    _upload_file(table_name, file_name, df, cloud_client)
+                else:
+                    start_date = _get_latest_date(table_name, bq_conn) + timedelta(days=1)
+                    _process_files_with_datestamp(table_name, directory_name, start_date, cloud_client)
 
     if args.dbt_refresh:
         logging.info("Running dbt refresh job")
