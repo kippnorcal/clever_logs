@@ -35,6 +35,7 @@ CLEVER_PW=
 FTP_HOST=
 FTP_USER=
 FTP_PW=
+# FTP_PORT is optional and defaults to 22
 FTP_PORT=
 
 # Mailgun & email notification variables
