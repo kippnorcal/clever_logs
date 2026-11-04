@@ -6,9 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-pysftp = "*"
+paramiko = "*"
 job-notifications = "*"
 gbq-connector = "*"
 
 [requires]
-python_version = "3.12"
+python_version = "3.14"
